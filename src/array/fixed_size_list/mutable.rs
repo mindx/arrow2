@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{
     array::{Array, MutableArray, TryExtend, TryPush},
     bitmap::MutableBitmap,
-    datatypes::DataType,
+    datatypes::{DataType, Field},
     error::{ArrowError, Result},
 };
 
@@ -20,7 +20,7 @@ pub struct MutableFixedSizeListArray<M: MutableArray> {
 
 impl<M: MutableArray> From<MutableFixedSizeListArray<M>> for FixedSizeListArray {
     fn from(mut other: MutableFixedSizeListArray<M>) -> Self {
-        FixedSizeListArray::from_data(
+        FixedSizeListArray::new(
             other.data_type,
             other.values.as_arc(),
             other.validity.map(|x| x.into()),
@@ -41,9 +41,29 @@ impl<M: MutableArray> MutableFixedSizeListArray<M> {
         }
     }
 
+    /// Creates a new [`MutableFixedSizeListArray`] from a [`MutableArray`] and size.
+    pub fn new_with_field(values: M, name: &str, nullable: bool, size: usize) -> Self {
+        let data_type = DataType::FixedSizeList(
+            Box::new(Field::new(name, values.data_type().clone(), nullable)),
+            size,
+        );
+        assert_eq!(values.len(), 0);
+        Self {
+            size,
+            data_type,
+            values,
+            validity: None,
+        }
+    }
+
     /// The inner values
     pub fn values(&self) -> &M {
         &self.values
+    }
+
+    /// The values as a mutable reference
+    pub fn mut_values(&mut self) -> &mut M {
+        &mut self.values
     }
 
     fn init_validity(&mut self) {
@@ -56,7 +76,9 @@ impl<M: MutableArray> MutableFixedSizeListArray<M> {
     }
 
     #[inline]
-    fn try_push_valid(&mut self) -> Result<()> {
+    /// Needs to be called when a valid value was extended to this array.
+    /// This is a relatively low level function, prefer `try_push` when you can.
+    pub fn try_push_valid(&mut self) -> Result<()> {
         if self.values.len() % self.size != 0 {
             return Err(ArrowError::Overflow);
         };
@@ -93,7 +115,7 @@ impl<M: MutableArray + 'static> MutableArray for MutableFixedSizeListArray<M> {
     }
 
     fn as_box(&mut self) -> Box<dyn Array> {
-        Box::new(FixedSizeListArray::from_data(
+        Box::new(FixedSizeListArray::new(
             self.data_type.clone(),
             self.values.as_arc(),
             std::mem::take(&mut self.validity).map(|x| x.into()),
@@ -101,7 +123,7 @@ impl<M: MutableArray + 'static> MutableArray for MutableFixedSizeListArray<M> {
     }
 
     fn as_arc(&mut self) -> Arc<dyn Array> {
-        Arc::new(FixedSizeListArray::from_data(
+        Arc::new(FixedSizeListArray::new(
             self.data_type.clone(),
             self.values.as_arc(),
             std::mem::take(&mut self.validity).map(|x| x.into()),

@@ -61,8 +61,6 @@ itertools = { version = "^0.10", optional = true }
 
 base64 = { version = "0.13.0", optional = true }
 
-packed_simd = { version = "0.3", optional = true, package = "packed_simd_2" }
-
 # to write to parquet as a stream
 futures = { version = "0.3", optional = true }
 
@@ -87,6 +85,9 @@ strength_reduce = { version = "0.2", optional = true }
 # For instruction multiversioning
 multiversion = { version = "0.6.1", optional = true }
 
+# For support for odbc
+odbc-api = { version = "0.35", optional = true }
+
 [dev-dependencies]
 criterion = "0.3"
 flate2 = "1"
@@ -106,6 +107,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = []
 full = [
+    "io_odbc",
     "io_csv",
     "io_csv_async",
     "io_json",
@@ -126,6 +128,7 @@ full = [
     # parses timezones used in timestamp conversions
     "chrono-tz",
 ]
+io_odbc = ["odbc-api"]
 io_csv = ["io_csv_read", "io_csv_write"]
 io_csv_async = ["io_csv_read_async"]
 io_csv_read = ["csv", "lexical-core"]
@@ -134,7 +137,7 @@ io_csv_write = ["csv", "csv-core", "streaming-iterator", "lexical-core"]
 io_json = ["serde", "serde_json", "streaming-iterator", "fallible-streaming-iterator", "indexmap", "lexical-core"]
 io_ipc = ["arrow-format"]
 io_ipc_write_async = ["io_ipc", "futures"]
-io_ipc_read_async = ["io_ipc", "futures"]
+io_ipc_read_async = ["io_ipc", "futures", "async-stream"]
 io_ipc_compression = ["lz4", "zstd"]
 io_flight = ["io_ipc", "arrow-format/flight-data"]
 # base64 + io_ipc because arrow schemas are stored as base64-encoded ipc format.
@@ -211,8 +214,8 @@ compute = [
     "compute_window"
 ]
 benchmarks = ["rand"]
-simd = ["packed_simd"]
 serde_types = ["serde", "serde_derive"]
+simd = []
 
 [package.metadata.cargo-all-features]
 allowlist = ["compute", "compute_sort", "compute_hash", "compute_nullif"]
